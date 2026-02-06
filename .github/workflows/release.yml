@@ -30,10 +30,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v6
-      - name: Set up Go 1.23
+      - name: Set up Go
         uses: actions/setup-go@v6
         with:
-          go-version: '1.23.x'
+          go-version: '1.24.x'
       - name: Build binaries
         env:
           GOOS: ${{ matrix.goos }}
@@ -43,7 +43,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          binary=showcase
+          binary=showboat
           ext=""
           if [ "$GOOS" = "windows" ]; then
             ext=".exe"
@@ -74,12 +74,12 @@ jobs:
           set -euo pipefail
           uname -m
           version="${GITHUB_REF_NAME#v}"
-          dist_bin="dist/showcase-linux-amd64/showcase"
+          dist_bin="dist/showboat-linux-amd64/showboat"
           "$dist_bin" --version | grep -Fx "$version"
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: showcase-${{ matrix.goos }}-${{ matrix.goarch }}
+          name: showboat-${{ matrix.goos }}-${{ matrix.goarch }}
           path: |
             dist/*.tar.gz
             dist/*.zip
