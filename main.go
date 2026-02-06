@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+
+	"github.com/simonw/showcase/cmd"
 )
 
 func main() {
@@ -13,8 +15,14 @@ func main() {
 
 	switch os.Args[1] {
 	case "init":
-		fmt.Fprintln(os.Stderr, "init: not yet implemented")
-		os.Exit(1)
+		if len(os.Args) < 4 {
+			fmt.Fprintln(os.Stderr, "usage: showcase init <file> <title>")
+			os.Exit(1)
+		}
+		if err := cmd.Init(os.Args[2], os.Args[3]); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
 	case "build":
 		fmt.Fprintln(os.Stderr, "build: not yet implemented")
 		os.Exit(1)
