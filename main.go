@@ -2,44 +2,156 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/simonw/showcase/cmd"
 )
 
 func main() {
-	if len(os.Args) < 2 {
+	args, workdir := parseGlobalFlags(os.Args[1:])
+
+	if len(args) < 1 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	switch os.Args[1] {
+	switch args[0] {
 	case "init":
-		if len(os.Args) < 4 {
+		if len(args) < 3 {
 			fmt.Fprintln(os.Stderr, "usage: showcase init <file> <title>")
 			os.Exit(1)
 		}
-		if err := cmd.Init(os.Args[2], os.Args[3]); err != nil {
+		if err := cmd.Init(args[1], args[2]); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
+
 	case "build":
-		fmt.Fprintln(os.Stderr, "build: not yet implemented")
-		os.Exit(1)
+		if len(args) < 3 {
+			fmt.Fprintln(os.Stderr, "usage: showcase build <file> <subcommand> [args...]")
+			os.Exit(1)
+		}
+		file := args[1]
+		sub := args[2]
+		remaining := args[3:]
+
+		switch sub {
+		case "commentary":
+			text, err := getTextArg(remaining)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := cmd.BuildCommentary(file, text); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		case "run":
+			if len(remaining) < 1 {
+				fmt.Fprintln(os.Stderr, "usage: showcase build <file> run <lang> [code]")
+				os.Exit(1)
+			}
+			lang := remaining[0]
+			code, err := getTextArg(remaining[1:])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := cmd.BuildRun(file, lang, code, workdir); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		case "image":
+			script, err := getTextArg(remaining)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			if err := cmd.BuildImage(file, script, workdir); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "unknown build subcommand: %s\n", sub)
+			os.Exit(1)
+		}
+
 	case "verify":
-		fmt.Fprintln(os.Stderr, "verify: not yet implemented")
-		os.Exit(1)
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: showcase verify <file> [--output <new>]")
+			os.Exit(1)
+		}
+		file := args[1]
+		outputFile := ""
+		remaining := args[2:]
+		for i := 0; i < len(remaining); i++ {
+			if remaining[i] == "--output" && i+1 < len(remaining) {
+				outputFile = remaining[i+1]
+				i++
+			}
+		}
+		diffs, err := cmd.Verify(file, outputFile, workdir)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if len(diffs) > 0 {
+			for _, d := range diffs {
+				fmt.Println(d.String())
+			}
+			os.Exit(1)
+		}
+
 	case "extract":
-		fmt.Fprintln(os.Stderr, "extract: not yet implemented")
-		os.Exit(1)
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: showcase extract <file>")
+			os.Exit(1)
+		}
+		commands, err := cmd.Extract(args[1])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		for _, c := range commands {
+			fmt.Println(c)
+		}
+
 	case "--help", "-h", "help":
 		printUsage()
 		os.Exit(0)
+
 	default:
-		fmt.Fprintf(os.Stderr, "unknown command: %s\n", os.Args[1])
+		fmt.Fprintf(os.Stderr, "unknown command: %s\n", args[0])
 		printUsage()
 		os.Exit(1)
 	}
+}
+
+// parseGlobalFlags extracts --workdir from args and returns the remaining args
+// and the workdir value.
+func parseGlobalFlags(args []string) (remaining []string, workdir string) {
+	for i := 0; i < len(args); i++ {
+		if args[i] == "--workdir" && i+1 < len(args) {
+			workdir = args[i+1]
+			i++ // skip value
+		} else {
+			remaining = append(remaining, args[i])
+		}
+	}
+	return remaining, workdir
+}
+
+// getTextArg returns args[0] if present, otherwise reads all of stdin.
+func getTextArg(args []string) (string, error) {
+	if len(args) > 0 {
+		return args[0], nil
+	}
+	data, err := io.ReadAll(os.Stdin)
+	if err != nil {
+		return "", fmt.Errorf("reading stdin: %w", err)
+	}
+	return string(data), nil
 }
 
 func printUsage() {

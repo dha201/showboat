@@ -33,10 +33,16 @@ func Parse(r io.Reader) ([]Block, error) {
 		if len(blocks) == 0 && strings.HasPrefix(lines[i], "# ") {
 			title := lines[i][2:]
 			i++ // past "# ..." line
-			i++ // past blank line between title and timestamp
+			// Skip blank line between title and timestamp
+			if i < len(lines) && lines[i] == "" {
+				i++
+			}
 			// Parse timestamp: *timestamp*
-			ts := strings.Trim(lines[i], "*")
-			i++ // past "*timestamp*" line
+			ts := ""
+			if i < len(lines) && strings.HasPrefix(lines[i], "*") && strings.HasSuffix(lines[i], "*") {
+				ts = strings.Trim(lines[i], "*")
+				i++
+			}
 			blocks = append(blocks, TitleBlock{Title: title, Timestamp: ts})
 			skipSeparator()
 			continue
