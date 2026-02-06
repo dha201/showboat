@@ -8,8 +8,15 @@ import (
 	"github.com/simonw/showboat/cmd"
 )
 
+var version = "dev"
+
 func main() {
-	args, workdir := parseGlobalFlags(os.Args[1:])
+	args, workdir, showVersion := parseGlobalFlags(os.Args[1:])
+
+	if showVersion {
+		fmt.Println(version)
+		os.Exit(0)
+	}
 
 	if len(args) < 1 {
 		printUsage()
@@ -128,18 +135,20 @@ func main() {
 	}
 }
 
-// parseGlobalFlags extracts --workdir from args and returns the remaining args
-// and the workdir value.
-func parseGlobalFlags(args []string) (remaining []string, workdir string) {
+// parseGlobalFlags extracts global flags from args and returns the remaining
+// args, workdir value, and whether to show version.
+func parseGlobalFlags(args []string) (remaining []string, workdir string, showVersion bool) {
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--workdir" && i+1 < len(args) {
 			workdir = args[i+1]
 			i++ // skip value
+		} else if args[i] == "--version" {
+			showVersion = true
 		} else {
 			remaining = append(remaining, args[i])
 		}
 	}
-	return remaining, workdir
+	return remaining, workdir, showVersion
 }
 
 // getTextArg returns args[0] if present, otherwise reads all of stdin.
@@ -172,6 +181,7 @@ Usage:
 
 Global Options:
   --workdir <dir>   Set working directory for code execution (default: current)
+  --version         Print version and exit
   --help, -h        Show this help message
 
 Stdin:

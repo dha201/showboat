@@ -25,6 +25,7 @@ cat script.sh | showboat build demo.md run bash
 ## Global options
 
 - `--workdir <dir>` — Set working directory for code execution (default: current)
+- `--version` — Print version and exit
 - `--help, -h` — Show help message
 
 ## Example

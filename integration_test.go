@@ -122,3 +122,29 @@ func runOutput(t *testing.T, bin string, args ...string) string {
 	}
 	return string(out)
 }
+
+func TestVersionFlagDefault(t *testing.T) {
+	tmpBin := filepath.Join(t.TempDir(), "showcase")
+	build := exec.Command("go", "build", "-o", tmpBin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	got := strings.TrimSpace(runOutput(t, tmpBin, "--version"))
+	if got != "dev" {
+		t.Fatalf("expected version dev, got %q", got)
+	}
+}
+
+func TestVersionFlagInjectedByLdflags(t *testing.T) {
+	tmpBin := filepath.Join(t.TempDir(), "showcase")
+	build := exec.Command("go", "build", "-ldflags", "-X main.version=1.2.3", "-o", tmpBin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	got := strings.TrimSpace(runOutput(t, tmpBin, "--version"))
+	if got != "1.2.3" {
+		t.Fatalf("expected version 1.2.3, got %q", got)
+	}
+}
