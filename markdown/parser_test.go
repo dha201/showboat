@@ -94,6 +94,62 @@ func TestParseImageCodeAndOutput(t *testing.T) {
 	}
 }
 
+func TestParseOutputWithLongerFence(t *testing.T) {
+	input := "````output\n```bash\necho hello\n```\n````\n"
+	blocks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(blocks) != 1 {
+		t.Fatalf("expected 1 block, got %d: %+v", len(blocks), blocks)
+	}
+	out, ok := blocks[0].(OutputBlock)
+	if !ok {
+		t.Fatalf("expected OutputBlock, got %T", blocks[0])
+	}
+	expected := "```bash\necho hello\n```\n"
+	if out.Content != expected {
+		t.Errorf("expected content:\n%s\ngot:\n%s", expected, out.Content)
+	}
+}
+
+func TestParseCodeBlockWithLongerFence(t *testing.T) {
+	input := "````bash\necho ```hello```\n````\n"
+	blocks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(blocks) != 1 {
+		t.Fatalf("expected 1 block, got %d: %+v", len(blocks), blocks)
+	}
+	code, ok := blocks[0].(CodeBlock)
+	if !ok {
+		t.Fatalf("expected CodeBlock, got %T", blocks[0])
+	}
+	if code.Code != "echo ```hello```" {
+		t.Errorf("unexpected code: %q", code.Code)
+	}
+}
+
+func TestRoundTripWithBackticksInOutput(t *testing.T) {
+	input := "```bash\ncat inner.md\n```\n\n````output\n# My Demo\n\n```bash\necho hello\n```\n\n```output\nhello\n```\n````\n"
+	blocks, err := Parse(strings.NewReader(input))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(blocks) != 2 {
+		t.Fatalf("expected 2 blocks, got %d: %+v", len(blocks), blocks)
+	}
+	var buf strings.Builder
+	err = Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if buf.String() != input {
+		t.Errorf("round trip mismatch.\nexpected:\n%s\ngot:\n%s", input, buf.String())
+	}
+}
+
 func TestRoundTrip(t *testing.T) {
 	input := "# Demo\n\n*2026-02-06T00:00:00Z*\n\nLet's begin.\n\n```bash\necho hi\n```\n\n```output\nhi\n```\n\nDone.\n"
 	blocks, err := Parse(strings.NewReader(input))

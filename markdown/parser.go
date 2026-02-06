@@ -48,36 +48,46 @@ func Parse(r io.Reader) ([]Block, error) {
 			continue
 		}
 
-		// Fenced block: starts with ```
+		// Fenced block: starts with ``` (possibly more backticks)
 		if strings.HasPrefix(lines[i], "```") {
-			fence := lines[i][3:]
+			// Count the backticks in the opening fence.
+			fenceTicks := 0
+			for _, ch := range lines[i] {
+				if ch == '`' {
+					fenceTicks++
+				} else {
+					break
+				}
+			}
+			closingFence := strings.Repeat("`", fenceTicks)
+			info := lines[i][fenceTicks:]
 			i++ // past opening fence
 
 			switch {
-			case fence == "output":
+			case info == "output":
 				var content strings.Builder
-				for i < len(lines) && lines[i] != "```" {
+				for i < len(lines) && lines[i] != closingFence {
 					content.WriteString(lines[i])
 					content.WriteString("\n")
 					i++
 				}
-				i++ // past closing ```
+				i++ // past closing fence
 				blocks = append(blocks, OutputBlock{Content: content.String()})
 
 			default:
 				// Code block. Check for {image} suffix.
-				lang := fence
+				lang := info
 				isImage := false
 				if strings.HasSuffix(lang, " {image}") {
 					lang = strings.TrimSuffix(lang, " {image}")
 					isImage = true
 				}
 				var codeLines []string
-				for i < len(lines) && lines[i] != "```" {
+				for i < len(lines) && lines[i] != closingFence {
 					codeLines = append(codeLines, lines[i])
 					i++
 				}
-				i++ // past closing ```
+				i++ // past closing fence
 				blocks = append(blocks, CodeBlock{
 					Lang:    lang,
 					Code:    strings.Join(codeLines, "\n"),

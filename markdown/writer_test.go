@@ -67,6 +67,52 @@ func TestWriteImageCodeAndOutput(t *testing.T) {
 	}
 }
 
+func TestWriteOutputWithTripleBackticks(t *testing.T) {
+	var buf strings.Builder
+	blocks := []Block{
+		OutputBlock{Content: "```bash\necho hello\n```\n"},
+	}
+	err := Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "````output\n```bash\necho hello\n```\n````\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
+}
+
+func TestWriteOutputWithQuadrupleBackticks(t *testing.T) {
+	var buf strings.Builder
+	blocks := []Block{
+		OutputBlock{Content: "````python\nprint('hi')\n````\n"},
+	}
+	err := Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "`````output\n````python\nprint('hi')\n````\n`````\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
+}
+
+func TestWriteOutputNoBackticks(t *testing.T) {
+	// When output has no backtick fences, writer should still use plain ```
+	var buf strings.Builder
+	blocks := []Block{
+		OutputBlock{Content: "hello world\n"},
+	}
+	err := Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "```output\nhello world\n```\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%s\ngot:\n%s", expected, buf.String())
+	}
+}
+
 func TestWriteFullDocument(t *testing.T) {
 	var buf strings.Builder
 	blocks := []Block{

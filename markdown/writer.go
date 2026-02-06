@@ -3,6 +3,7 @@ package markdown
 import (
 	"fmt"
 	"io"
+	"strings"
 )
 
 // Write serializes a slice of Blocks to markdown, writing the result to w.
@@ -36,7 +37,8 @@ func writeBlock(w io.Writer, block Block) error {
 		_, err := fmt.Fprintf(w, "```%s\n%s\n```\n", lang, b.Code)
 		return err
 	case OutputBlock:
-		_, err := fmt.Fprintf(w, "```output\n%s```\n", b.Content)
+		fence := fenceFor(b.Content)
+		_, err := fmt.Fprintf(w, "%soutput\n%s%s\n", fence, b.Content, fence)
 		return err
 	case ImageOutputBlock:
 		_, err := fmt.Fprintf(w, "![%s](%s)\n", b.AltText, b.Filename)
@@ -44,4 +46,28 @@ func writeBlock(w io.Writer, block Block) error {
 	default:
 		return fmt.Errorf("unknown block type: %T", block)
 	}
+}
+
+// fenceFor returns a backtick fence string (at least 3 backticks) that is
+// longer than any backtick sequence found at the start of a line in content.
+func fenceFor(content string) string {
+	maxRun := 0
+	for _, line := range strings.Split(content, "\n") {
+		run := 0
+		for _, ch := range line {
+			if ch == '`' {
+				run++
+			} else {
+				break
+			}
+		}
+		if run > maxRun {
+			maxRun = run
+		}
+	}
+	n := 3
+	if maxRun >= 3 {
+		n = maxRun + 1
+	}
+	return strings.Repeat("`", n)
 }
