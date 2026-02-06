@@ -4,6 +4,10 @@ Create executable demo documents that show and prove an agent's work.
 
 Showboat helps agents build markdown documents that mix commentary, executable code blocks, and captured output. These documents serve as both readable documentation and reproducible proof of work. A verifier can re-execute all code blocks and confirm the outputs still match.
 
+## Example
+
+Here's [an example Showboat demo document](https://github.com/simonw/showboat-demos/blob/main/shot-scraper/README.md) that demonstrates [shot-scraper](https://github.com/shot-scraper). It was created by Claude Code, as shown by [this transcript](https://gisthost.github.io/?29b0d0ebef50c57e7985a6004aad01c4/page-001.html#msg-2026-02-06T07-33-41-296Z).
+
 ## Installation
 
 This Go tool can be installed directly [from PyPI](https://pypi.org/project/showboat/) using `pip` or `uv`.
