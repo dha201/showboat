@@ -234,11 +234,17 @@ Example:
   # Add commentary
   showboat build demo.md commentary "First, let's create a virtual environment."
 
-  # Run a command and capture output
+  # Run a command and capture output (output is printed to stdout)
   showboat build demo.md run bash "python3 -m venv .venv && echo 'Done'"
 
   # Run Python and capture output
   showboat build demo.md run python "print('Hello from Python')"
+
+  # Oops, wrong command — remove the last entry from the document
+  showboat pop demo.md
+
+  # Redo it correctly
+  showboat build demo.md run python3 "print('Hello from Python')"
 
   # Capture a screenshot
   showboat build demo.md image "python screenshot.py http://localhost:8000"
