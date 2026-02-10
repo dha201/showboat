@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -136,5 +137,54 @@ func TestShowboatDirSymlinkFallback(t *testing.T) {
 	}
 	if target != weirdName {
 		t.Errorf("expected symlink target %q, got %q", weirdName, target)
+	}
+}
+
+func TestShowboatDirCopyFallback(t *testing.T) {
+	// Force symlink to fail so showboatDirFrom falls back to copy.
+	old := symlinkFunc
+	symlinkFunc = func(_, _ string) error {
+		return fmt.Errorf("symlinks not supported")
+	}
+	defer func() { symlinkFunc = old }()
+
+	// Create a fake binary under a non-"showboat" name.
+	tmpDir := t.TempDir()
+	weirdName := filepath.Join(tmpDir, "some-other-name")
+	content := []byte("fake binary content")
+	if err := os.WriteFile(weirdName, content, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	dir, cleanup := showboatDirFrom(weirdName)
+	if cleanup == nil {
+		t.Fatal("expected cleanup function for copy fallback")
+	}
+	defer cleanup()
+
+	if dir == tmpDir {
+		t.Error("should NOT have returned the original dir")
+	}
+
+	// The returned dir should contain a regular file (not a symlink)
+	copied := filepath.Join(dir, "showboat")
+	info, err := os.Lstat(copied)
+	if err != nil {
+		t.Fatalf("expected showboat file at %s: %v", copied, err)
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		t.Error("expected regular file, got symlink")
+	}
+	if info.Mode().Perm()&0111 == 0 {
+		t.Errorf("expected executable permissions, got %v", info.Mode().Perm())
+	}
+
+	// The content should match the original
+	got, err := os.ReadFile(copied)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(content) {
+		t.Errorf("expected copied content %q, got %q", content, got)
 	}
 }

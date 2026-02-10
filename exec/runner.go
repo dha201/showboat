@@ -77,6 +77,10 @@ func showboatDir() (dir string, cleanup func()) {
 	return showboatDirFrom(self)
 }
 
+// symlinkFunc is the function used to create symlinks. It can be
+// overridden in tests to simulate platforms where symlinks fail.
+var symlinkFunc = os.Symlink
+
 // showboatDirFrom is the testable core of showboatDir. Given the path to
 // the current binary, it returns a directory containing a "showboat" entry.
 func showboatDirFrom(self string) (dir string, cleanup func()) {
@@ -101,7 +105,7 @@ func showboatDirFrom(self string) (dir string, cleanup func()) {
 	dest := filepath.Join(tmpDir, name)
 
 	// Try symlink first (free, works on Linux/macOS).
-	if os.Symlink(self, dest) == nil {
+	if symlinkFunc(self, dest) == nil {
 		return tmpDir, func() { os.RemoveAll(tmpDir) }
 	}
 
