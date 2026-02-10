@@ -29,7 +29,8 @@ func Exec(file, lang, code, workdir string) (string, int, error) {
 		return "", 1, fmt.Errorf("file not found: %s", file)
 	}
 
-	output, exitCode, err := execpkg.Run(lang, code, workdir)
+	varsFile := VarsFile(file)
+	output, exitCode, err := execpkg.Run(lang, code, workdir, varsFile)
 	if err != nil {
 		return "", exitCode, fmt.Errorf("running code: %w", err)
 	}
@@ -58,7 +59,8 @@ func Image(file, script, workdir string) error {
 	}
 
 	destDir := filepath.Dir(file)
-	filename, err := execpkg.RunImage(script, destDir, workdir)
+	varsFile := VarsFile(file)
+	filename, err := execpkg.RunImage(script, destDir, workdir, varsFile)
 	if err != nil {
 		return fmt.Errorf("running image script: %w", err)
 	}

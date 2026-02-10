@@ -237,6 +237,117 @@ func TestVersionFlagDefault(t *testing.T) {
 	}
 }
 
+func TestVarCrossCellPersistence(t *testing.T) {
+	tmpBin := filepath.Join(t.TempDir(), "showboat")
+	build := exec.Command("go", "build", "-o", tmpBin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	run(t, tmpBin, "init", file, "Var Test")
+
+	// Cell 1: set a variable
+	run(t, tmpBin, "exec", file, "bash", "showboat var set GREETING hello")
+
+	// Cell 2: read the variable and echo it
+	out := runOutput(t, tmpBin, "exec", file, "bash", "echo $(showboat var get GREETING)")
+	if !strings.Contains(out, "hello") {
+		t.Errorf("expected 'hello' in output, got: %q", out)
+	}
+
+	// Verify the document content has the echoed value
+	content, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(content), "hello") {
+		t.Error("expected 'hello' in document output")
+	}
+
+	// Verify should replay successfully (vars reset and rebuild)
+	run(t, tmpBin, "verify", file)
+
+	// The .vars file should be cleaned up after verify
+	varsFile := file + ".vars"
+	if _, err := os.Stat(varsFile); err == nil {
+		t.Error("expected vars file to be cleaned up after verify")
+	}
+}
+
+func TestVarOverwriteAndList(t *testing.T) {
+	tmpBin := filepath.Join(t.TempDir(), "showboat")
+	build := exec.Command("go", "build", "-o", tmpBin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	run(t, tmpBin, "init", file, "Var Overwrite Test")
+
+	// Set two variables
+	run(t, tmpBin, "exec", file, "bash", "showboat var set A first && showboat var set B second")
+
+	// Overwrite A
+	run(t, tmpBin, "exec", file, "bash", "showboat var set A updated")
+
+	// Read back and check
+	out := runOutput(t, tmpBin, "exec", file, "bash", "echo $(showboat var get A)")
+	if !strings.Contains(out, "updated") {
+		t.Errorf("expected 'updated' in output, got: %q", out)
+	}
+
+	// List should show both vars
+	out = runOutput(t, tmpBin, "exec", file, "bash", "showboat var list")
+	if !strings.Contains(out, "A") || !strings.Contains(out, "B") {
+		t.Errorf("expected var list to contain A and B, got: %q", out)
+	}
+
+	// Delete A and confirm it's gone
+	run(t, tmpBin, "exec", file, "bash", "showboat var del A")
+	cmdExec := exec.Command(tmpBin, "exec", file, "bash", "showboat var get A")
+	cmdOut, err := cmdExec.CombinedOutput()
+	if err == nil {
+		t.Error("expected non-zero exit when getting deleted var")
+	}
+	if !strings.Contains(string(cmdOut), "variable not set") {
+		t.Errorf("expected 'variable not set' error, got: %q", string(cmdOut))
+	}
+
+	// Clean up the vars file
+	os.Remove(file + ".vars")
+}
+
+func TestVarWithPython(t *testing.T) {
+	tmpBin := filepath.Join(t.TempDir(), "showboat")
+	build := exec.Command("go", "build", "-o", tmpBin, ".")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build failed: %s\n%s", err, out)
+	}
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	run(t, tmpBin, "init", file, "Python Var Test")
+
+	// Set a var from bash
+	run(t, tmpBin, "exec", file, "bash", "showboat var set NUM 42")
+
+	// Read it from Python using subprocess
+	pythonCode := `import subprocess; result = subprocess.run(["showboat", "var", "get", "NUM"], capture_output=True, text=True); print("got:" + result.stdout)`
+	out := runOutput(t, tmpBin, "exec", file, "python3", pythonCode)
+	if !strings.Contains(out, "got:42") {
+		t.Errorf("expected 'got:42' from python, got: %q", out)
+	}
+
+	// Clean up
+	os.Remove(file + ".vars")
+}
+
 func TestVersionFlagInjectedByLdflags(t *testing.T) {
 	tmpBin := filepath.Join(t.TempDir(), "showcase")
 	build := exec.Command("go", "build", "-ldflags", "-X main.version=1.2.3", "-o", tmpBin, ".")

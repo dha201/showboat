@@ -16,7 +16,7 @@ func TestRunImageScript(t *testing.T) {
 	script := `printf '\x89PNG\r\n\x1a\n' > ` + imgPath + ` && echo ` + imgPath
 
 	destDir := t.TempDir()
-	filename, err := RunImage(script, destDir, "")
+	filename, err := RunImage(script, destDir, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestRunImageScript(t *testing.T) {
 func TestRunImageScriptBadPath(t *testing.T) {
 	script := `echo /nonexistent/file.png`
 	destDir := t.TempDir()
-	_, err := RunImage(script, destDir, "")
+	_, err := RunImage(script, destDir, "", "")
 	if err == nil {
 		t.Error("expected error for nonexistent image path")
 	}

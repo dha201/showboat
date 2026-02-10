@@ -6,7 +6,7 @@ import (
 )
 
 func TestRunBash(t *testing.T) {
-	output, _, err := Run("bash", "echo hello", "")
+	output, _, err := Run("bash", "echo hello", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -16,7 +16,7 @@ func TestRunBash(t *testing.T) {
 }
 
 func TestRunPython(t *testing.T) {
-	output, _, err := Run("python3", "print('hi')", "")
+	output, _, err := Run("python3", "print('hi')", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestRunPython(t *testing.T) {
 }
 
 func TestRunWithWorkdir(t *testing.T) {
-	output, _, err := Run("bash", "pwd", "/tmp")
+	output, _, err := Run("bash", "pwd", "/tmp", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestRunWithWorkdir(t *testing.T) {
 }
 
 func TestRunNonZeroExit(t *testing.T) {
-	output, exitCode, err := Run("bash", "echo oops && exit 1", "")
+	output, exitCode, err := Run("bash", "echo oops && exit 1", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestRunNonZeroExit(t *testing.T) {
 }
 
 func TestRunExitCodeReflected(t *testing.T) {
-	_, exitCode, err := Run("bash", "exit 42", "")
+	_, exitCode, err := Run("bash", "exit 42", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestRunExitCodeReflected(t *testing.T) {
 }
 
 func TestRunZeroExitCode(t *testing.T) {
-	_, exitCode, err := Run("bash", "echo ok", "")
+	_, exitCode, err := Run("bash", "echo ok", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestRunZeroExitCode(t *testing.T) {
 }
 
 func TestRunStderrCaptured(t *testing.T) {
-	output, _, err := Run("bash", "echo out && echo err >&2", "")
+	output, _, err := Run("bash", "echo out && echo err >&2", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

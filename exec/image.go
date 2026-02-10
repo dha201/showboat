@@ -24,8 +24,8 @@ var validImageExts = map[string]bool{
 // The last line of stdout is treated as the path to the image.
 // The image is copied to destDir with a <uuid>-<date>.<ext> filename.
 // Returns the new filename (not the full path).
-func RunImage(script, destDir, workdir string) (string, error) {
-	output, _, err := Run("bash", script, workdir)
+func RunImage(script, destDir, workdir, varsFile string) (string, error) {
+	output, _, err := Run("bash", script, workdir, varsFile)
 	if err != nil {
 		return "", fmt.Errorf("running image script: %w", err)
 	}

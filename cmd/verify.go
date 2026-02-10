@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	execpkg "github.com/simonw/showboat/exec"
@@ -33,6 +34,11 @@ func Verify(file, outputFile, workdir string) ([]Diff, error) {
 		return nil, err
 	}
 
+	// Start with a clean vars file so verify is a deterministic replay
+	varsFile := VarsFile(file)
+	os.Remove(varsFile)
+	defer os.Remove(varsFile)
+
 	var diffs []Diff
 
 	for i := 0; i < len(blocks); i++ {
@@ -42,7 +48,7 @@ func Verify(file, outputFile, workdir string) ([]Diff, error) {
 		}
 
 		// Execute the code block
-		output, _, err := execpkg.Run(cb.Lang, cb.Code, workdir)
+		output, _, err := execpkg.Run(cb.Lang, cb.Code, workdir, varsFile)
 		if err != nil {
 			return nil, fmt.Errorf("executing block %d: %w", i, err)
 		}

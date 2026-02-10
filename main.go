@@ -114,6 +114,56 @@ func main() {
 			os.Exit(1)
 		}
 
+	case "var":
+		if len(args) < 2 {
+			fmt.Fprintln(os.Stderr, "usage: showboat var <set|get|list|del> [args...]")
+			os.Exit(1)
+		}
+		switch args[1] {
+		case "set":
+			if len(args) < 4 {
+				fmt.Fprintln(os.Stderr, "usage: showboat var set <key> <value>")
+				os.Exit(1)
+			}
+			if err := cmd.VarSet(args[2], args[3]); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		case "get":
+			if len(args) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: showboat var get <key>")
+				os.Exit(1)
+			}
+			val, err := cmd.VarGet(args[2])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Print(val)
+		case "list":
+			keys, err := cmd.VarList()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			for _, k := range keys {
+				fmt.Println(k)
+			}
+		case "del":
+			if len(args) < 3 {
+				fmt.Fprintln(os.Stderr, "usage: showboat var del <key>")
+				os.Exit(1)
+			}
+			if err := cmd.VarDel(args[2]); err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+		default:
+			fmt.Fprintf(os.Stderr, "unknown var subcommand: %s\n", args[1])
+			fmt.Fprintln(os.Stderr, "usage: showboat var <set|get|list|del> [args...]")
+			os.Exit(1)
+		}
+
 	case "pop":
 		if len(args) < 2 {
 			fmt.Fprintln(os.Stderr, "usage: showboat pop <file>")
