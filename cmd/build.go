@@ -51,16 +51,21 @@ func Exec(file, lang, code, workdir string) (string, int, error) {
 	return output, exitCode, nil
 }
 
-// Image appends an image code block, runs the script, captures the image.
-func Image(file, script, workdir string) error {
+// Image appends an image reference to a showboat document. The input is either
+// a plain path to an image file or a markdown image reference of the form
+// ![alt text](path). When a markdown reference is provided the alt text is
+// preserved; otherwise it is derived from the generated filename.
+func Image(file, input, workdir string) error {
 	if _, err := os.Stat(file); err != nil {
 		return fmt.Errorf("file not found: %s", file)
 	}
 
+	imgPath, altText := parseImageInput(input)
+
 	destDir := filepath.Dir(file)
-	filename, err := execpkg.RunImage(script, destDir, workdir)
+	filename, err := execpkg.CopyImage(imgPath, destDir)
 	if err != nil {
-		return fmt.Errorf("running image script: %w", err)
+		return err
 	}
 
 	blocks, err := readBlocks(file)
@@ -68,15 +73,35 @@ func Image(file, script, workdir string) error {
 		return err
 	}
 
-	// Derive alt text from the filename without UUID prefix and date
-	altText := strings.TrimSuffix(filename, filepath.Ext(filename))
+	if altText == "" {
+		// Derive alt text from the filename without UUID prefix and date
+		altText = strings.TrimSuffix(filename, filepath.Ext(filename))
+	}
 
 	blocks = append(blocks,
-		markdown.CodeBlock{Lang: "bash", Code: script, IsImage: true},
+		markdown.CodeBlock{Lang: "bash", Code: input, IsImage: true},
 		markdown.ImageOutputBlock{AltText: altText, Filename: filename},
 	)
 
 	return writeBlocks(file, blocks)
+}
+
+// parseImageInput checks whether input is a markdown image reference
+// (![alt](path)) or a plain file path. It returns the image path and any
+// extracted alt text (empty when the input is a plain path).
+func parseImageInput(input string) (path, altText string) {
+	trimmed := strings.TrimSpace(input)
+	if strings.HasPrefix(trimmed, "![") && strings.HasSuffix(trimmed, ")") {
+		// Extract alt text between ![ and ]
+		rest := trimmed[2:]
+		closeBracket := strings.Index(rest, "](")
+		if closeBracket != -1 {
+			altText = rest[:closeBracket]
+			path = rest[closeBracket+2 : len(rest)-1]
+			return path, altText
+		}
+	}
+	return trimmed, ""
 }
 
 // readBlocks opens a file and parses its blocks.

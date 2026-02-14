@@ -20,23 +20,11 @@ var validImageExts = map[string]bool{
 	".svg":  true,
 }
 
-// RunImage runs a bash script that is expected to produce an image file.
-// The last line of stdout is treated as the path to the image.
-// The image is copied to destDir with a <uuid>-<date>.<ext> filename.
+// CopyImage copies an image file to destDir with a generated
+// <uuid>-<date>.<ext> filename. It validates that srcPath exists, is a
+// regular file, and has a recognized image extension.
 // Returns the new filename (not the full path).
-func RunImage(script, destDir, workdir string) (string, error) {
-	output, _, err := Run("bash", script, workdir)
-	if err != nil {
-		return "", fmt.Errorf("running image script: %w", err)
-	}
-
-	// Last non-empty line of output is the image path
-	lines := strings.Split(strings.TrimSpace(output), "\n")
-	if len(lines) == 0 {
-		return "", fmt.Errorf("image script produced no output")
-	}
-	srcPath := strings.TrimSpace(lines[len(lines)-1])
-
+func CopyImage(srcPath, destDir string) (string, error) {
 	// Verify file exists
 	info, err := os.Stat(srcPath)
 	if err != nil {
@@ -76,4 +64,24 @@ func RunImage(script, destDir, workdir string) (string, error) {
 	}
 
 	return newFilename, nil
+}
+
+// RunImage runs a bash script that is expected to produce an image file.
+// The last line of stdout is treated as the path to the image.
+// The image is copied to destDir with a <uuid>-<date>.<ext> filename.
+// Returns the new filename (not the full path).
+func RunImage(script, destDir, workdir string) (string, error) {
+	output, _, err := Run("bash", script, workdir)
+	if err != nil {
+		return "", fmt.Errorf("running image script: %w", err)
+	}
+
+	// Last non-empty line of output is the image path
+	lines := strings.Split(strings.TrimSpace(output), "\n")
+	if len(lines) == 0 {
+		return "", fmt.Errorf("image script produced no output")
+	}
+	srcPath := strings.TrimSpace(lines[len(lines)-1])
+
+	return CopyImage(srcPath, destDir)
 }
