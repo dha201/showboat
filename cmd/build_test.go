@@ -117,6 +117,19 @@ func TestExecNonZeroExit(t *testing.T) {
 	}
 }
 
+// minimalPNG is a valid 1x1 white PNG used in tests.
+var minimalPNG = []byte{
+	0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
+	0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+	0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+	0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+	0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41,
+	0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+	0x00, 0x00, 0x02, 0x00, 0x01, 0xe2, 0x21, 0xbc,
+	0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
+	0x44, 0xae, 0x42, 0x60, 0x82,
+}
+
 func TestImage(t *testing.T) {
 	dir := t.TempDir()
 	file := filepath.Join(dir, "demo.md")
@@ -125,27 +138,12 @@ func TestImage(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Create a tiny valid PNG file and a script that outputs its path
 	pngPath := filepath.Join(dir, "test.png")
-	// Minimal 1x1 white PNG
-	pngData := []byte{
-		0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, // PNG signature
-		0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-		0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
-		0xde, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41,
-		0x54, 0x08, 0xd7, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
-		0x00, 0x00, 0x02, 0x00, 0x01, 0xe2, 0x21, 0xbc,
-		0x33, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4e,
-		0x44, 0xae, 0x42, 0x60, 0x82,
-	}
-	if err := os.WriteFile(pngPath, pngData, 0644); err != nil {
+	if err := os.WriteFile(pngPath, minimalPNG, 0644); err != nil {
 		t.Fatal(err)
 	}
 
-	script := "echo " + pngPath
-
-	if err := Image(file, script, ""); err != nil {
+	if err := Image(file, pngPath, ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -160,5 +158,77 @@ func TestImage(t *testing.T) {
 	}
 	if !strings.Contains(s, "![") {
 		t.Errorf("expected image output in file, got: %s", s)
+	}
+}
+
+func TestImageMarkdownRef(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	if err := Init(file, "Test", "dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	pngPath := filepath.Join(dir, "test.png")
+	if err := os.WriteFile(pngPath, minimalPNG, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	input := "![My screenshot](" + pngPath + ")"
+
+	if err := Image(file, input, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := os.ReadFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	s := string(content)
+	if !strings.Contains(s, "![My screenshot](") {
+		t.Errorf("expected alt text 'My screenshot' in image output, got: %s", s)
+	}
+	if !strings.Contains(s, "```bash {image}") {
+		t.Errorf("expected image code block in file, got: %s", s)
+	}
+}
+
+func TestParseImageInput(t *testing.T) {
+	tests := []struct {
+		input   string
+		path    string
+		altText string
+	}{
+		{"/path/to/img.png", "/path/to/img.png", ""},
+		{"![alt text](/path/to/img.png)", "/path/to/img.png", "alt text"},
+		{"![](file.jpg)", "file.jpg", ""},
+		{"![Screenshot of homepage](shot.png)", "shot.png", "Screenshot of homepage"},
+		{"  ![padded](file.png)  ", "file.png", "padded"},
+		{"not-markdown.png", "not-markdown.png", ""},
+	}
+	for _, tt := range tests {
+		path, alt := parseImageInput(tt.input)
+		if path != tt.path {
+			t.Errorf("parseImageInput(%q): path = %q, want %q", tt.input, path, tt.path)
+		}
+		if alt != tt.altText {
+			t.Errorf("parseImageInput(%q): altText = %q, want %q", tt.input, alt, tt.altText)
+		}
+	}
+}
+
+func TestImageMarkdownRefBadPath(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	if err := Init(file, "Test", "dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	input := "![alt text](/nonexistent/image.png)"
+	err := Image(file, input, "")
+	if err == nil {
+		t.Error("expected error for nonexistent image path in markdown ref")
 	}
 }

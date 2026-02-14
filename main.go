@@ -75,15 +75,15 @@ func main() {
 
 	case "image":
 		if len(args) < 2 {
-			fmt.Fprintln(os.Stderr, "usage: showboat image <file> [script]")
+			fmt.Fprintln(os.Stderr, "usage: showboat image <file> <image|![alt](image)>")
 			os.Exit(1)
 		}
-		script, err := getTextArg(args[2:])
+		input, err := getTextArg(args[2:])
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
-		if err := cmd.Image(args[1], script, workdir); err != nil {
+		if err := cmd.Image(args[1], input, workdir); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
 		}
