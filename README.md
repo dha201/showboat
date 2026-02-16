@@ -263,6 +263,46 @@ By default the commands reference the original filename. Use `--filename` to sub
 showboat extract demo.md --filename copy.md
 ```
 
+## Remote Document Streaming
+
+When the `SHOWBOAT_REMOTE_URL` environment variable is set, each `init`, `note`, `exec`, `image`, and `pop` command will POST its content to the specified URL. This enables real-time streaming of document updates to a remote viewer as the document is built.
+
+Each document created with `showboat init` receives a UUID that ties all subsequent commands together into a single document stream. The UUID is stored as an HTML comment in the markdown:
+
+```
+<!-- showboat-id: 550e8400-e29b-41d4-a716-446655440000 -->
+```
+
+### Configuration
+
+Set the environment variable to your receiver's URL:
+
+```bash
+export SHOWBOAT_REMOTE_URL=https://www.example.com/showboat
+```
+
+Authentication can be handled by an optional query string argument:
+
+```bash
+export SHOWBOAT_REMOTE_URL=https://www.example.com/showboat?token=secret-token-here
+```
+
+Remote POST errors are printed as warnings to stderr but never fail the main command. If the URL is unset or empty, no POSTs are made.
+
+### POST Body Format
+
+All POSTs use `application/x-www-form-urlencoded` except `image`, which uses `multipart/form-data`. Every POST includes `uuid` and `command` fields.
+
+| Command | Content-Type | Form Fields |
+| --- | --- | --- |
+| `init` | `application/x-www-form-urlencoded` | `uuid`, `command=init`, `title` |
+| `note` | `application/x-www-form-urlencoded` | `uuid`, `command=note`, `markdown` |
+| `exec` | `application/x-www-form-urlencoded` | `uuid`, `command=exec`, `language`, `input`, `output` |
+| `image` | `multipart/form-data` | `uuid`, `command=image`, `input`, `alt`, `image` (file upload) |
+| `pop` | `application/x-www-form-urlencoded` | `uuid`, `command=pop` |
+
+For `exec`, `language` is the interpreter name (e.g. `bash`, `python3`), `input` is the source code, and `output` is the captured stdout/stderr. For `image`, the `image` field is the copied image file. For `note`, `markdown` contains the rendered markdown of the commentary block.
+
 ## Building the Python wheels
 
 The Python wheel versions are built using [go-to-wheel](https://github.com/simonw/go-to-wheel):
