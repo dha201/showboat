@@ -50,7 +50,14 @@ func Parse(r io.Reader) ([]Block, error) {
 				}
 				i++
 			}
-			blocks = append(blocks, TitleBlock{Title: title, Timestamp: ts, Version: ver})
+			// Check for optional document ID comment after timestamp.
+			docID := ""
+			if i < len(lines) && strings.HasPrefix(lines[i], "<!-- showboat-id: ") && strings.HasSuffix(lines[i], " -->") {
+				docID = strings.TrimPrefix(lines[i], "<!-- showboat-id: ")
+				docID = strings.TrimSuffix(docID, " -->")
+				i++
+			}
+			blocks = append(blocks, TitleBlock{Title: title, Timestamp: ts, Version: ver, DocumentID: docID})
 			skipSeparator()
 			continue
 		}

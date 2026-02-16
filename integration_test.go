@@ -43,6 +43,7 @@ func TestFullWorkflow(t *testing.T) {
 
 	checks := []string{
 		"# Integration Test Demo",
+		"<!-- showboat-id: ",
 		"This demo tests the full workflow.",
 		"echo 'Hello from bash'",
 		"Hello from bash",

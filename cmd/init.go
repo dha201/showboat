@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/simonw/showboat/markdown"
 )
 
@@ -16,8 +17,9 @@ func Init(file, title, version string) error {
 	}
 
 	timestamp := time.Now().UTC().Format(time.RFC3339)
+	docID := uuid.New().String()
 	blocks := []markdown.Block{
-		markdown.TitleBlock{Title: title, Timestamp: timestamp, Version: version},
+		markdown.TitleBlock{Title: title, Timestamp: timestamp, Version: version, DocumentID: docID},
 	}
 
 	f, err := os.Create(file)
@@ -26,5 +28,10 @@ func Init(file, title, version string) error {
 	}
 	defer f.Close()
 
-	return markdown.Write(f, blocks)
+	if err := markdown.Write(f, blocks); err != nil {
+		return err
+	}
+
+	postSection(docID, "init", blocks)
+	return nil
 }

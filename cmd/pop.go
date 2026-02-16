@@ -27,6 +27,8 @@ func Pop(file string) error {
 		}
 	}
 
+	docID := documentID(blocks)
+
 	last := blocks[len(blocks)-1]
 
 	switch last.(type) {
@@ -41,5 +43,12 @@ func Pop(file string) error {
 		blocks = blocks[:len(blocks)-1]
 	}
 
-	return writeBlocks(file, blocks)
+	if err := writeBlocks(file, blocks); err != nil {
+		return err
+	}
+
+	if docID != "" {
+		postPop(docID)
+	}
+	return nil
 }

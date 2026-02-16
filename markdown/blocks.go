@@ -7,9 +7,10 @@ type Block interface {
 
 // TitleBlock is the document header: an H1 title and a timestamp.
 type TitleBlock struct {
-	Title     string
-	Timestamp string
-	Version   string
+	Title      string
+	Timestamp  string
+	Version    string
+	DocumentID string
 }
 
 func (b TitleBlock) Type() string { return "title" }

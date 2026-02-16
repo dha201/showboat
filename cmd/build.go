@@ -17,9 +17,18 @@ func Note(file, text string) error {
 		return err
 	}
 
-	blocks = append(blocks, markdown.CommentaryBlock{Text: text})
+	newBlock := markdown.CommentaryBlock{Text: text}
+	blocks = append(blocks, newBlock)
 
-	return writeBlocks(file, blocks)
+	if err := writeBlocks(file, blocks); err != nil {
+		return err
+	}
+
+	docID := documentID(blocks)
+	if docID != "" {
+		postSection(docID, "note", []markdown.Block{newBlock})
+	}
+	return nil
 }
 
 // Exec appends a code block, executes it, and appends the output.
@@ -39,13 +48,17 @@ func Exec(file, lang, code, workdir string) (string, int, error) {
 		return "", exitCode, err
 	}
 
-	blocks = append(blocks,
-		markdown.CodeBlock{Lang: lang, Code: code},
-		markdown.OutputBlock{Content: output},
-	)
+	codeBlock := markdown.CodeBlock{Lang: lang, Code: code}
+	outputBlock := markdown.OutputBlock{Content: output}
+	blocks = append(blocks, codeBlock, outputBlock)
 
 	if err := writeBlocks(file, blocks); err != nil {
 		return output, exitCode, err
+	}
+
+	docID := documentID(blocks)
+	if docID != "" {
+		postSection(docID, "exec", []markdown.Block{codeBlock, outputBlock})
 	}
 
 	return output, exitCode, nil
@@ -78,12 +91,20 @@ func Image(file, input, workdir string) error {
 		altText = strings.TrimSuffix(filename, filepath.Ext(filename))
 	}
 
-	blocks = append(blocks,
-		markdown.CodeBlock{Lang: "bash", Code: input, IsImage: true},
-		markdown.ImageOutputBlock{AltText: altText, Filename: filename},
-	)
+	codeBlock := markdown.CodeBlock{Lang: "bash", Code: input, IsImage: true}
+	imgBlock := markdown.ImageOutputBlock{AltText: altText, Filename: filename}
+	blocks = append(blocks, codeBlock, imgBlock)
 
-	return writeBlocks(file, blocks)
+	if err := writeBlocks(file, blocks); err != nil {
+		return err
+	}
+
+	docID := documentID(blocks)
+	if docID != "" {
+		copiedImagePath := filepath.Join(destDir, filename)
+		postImage(docID, []markdown.Block{codeBlock, imgBlock}, copiedImagePath)
+	}
+	return nil
 }
 
 // parseImageInput checks whether input is a markdown image reference
