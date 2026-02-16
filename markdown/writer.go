@@ -28,8 +28,15 @@ func writeBlock(w io.Writer, block Block) error {
 		if b.Version != "" {
 			dateline += " by Showboat " + b.Version
 		}
-		_, err := fmt.Fprintf(w, "# %s\n\n*%s*\n", b.Title, dateline)
-		return err
+		if _, err := fmt.Fprintf(w, "# %s\n\n*%s*\n", b.Title, dateline); err != nil {
+			return err
+		}
+		if b.DocumentID != "" {
+			if _, err := fmt.Fprintf(w, "<!-- showboat-id: %s -->\n", b.DocumentID); err != nil {
+				return err
+			}
+		}
+		return nil
 	case CommentaryBlock:
 		_, err := fmt.Fprintf(w, "%s\n", b.Text)
 		return err

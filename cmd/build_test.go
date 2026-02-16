@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -191,6 +194,101 @@ func TestImageMarkdownRef(t *testing.T) {
 	}
 	if !strings.Contains(s, "```bash {image}") {
 		t.Errorf("expected image code block in file, got: %s", s)
+	}
+}
+
+func TestNoteCallsRemotePost(t *testing.T) {
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		gotBody = string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Setenv("SHOWBOAT_REMOTE_URL", server.URL)
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	if err := Init(file, "Test", "dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	// Reset gotBody so we only check the note POST
+	gotBody = ""
+	if err := Note(file, "Hello world"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(gotBody, "command=note") {
+		t.Errorf("expected command=note in remote POST body, got %q", gotBody)
+	}
+	if !strings.Contains(gotBody, "uuid=") {
+		t.Errorf("expected uuid in remote POST body, got %q", gotBody)
+	}
+}
+
+func TestExecCallsRemotePost(t *testing.T) {
+	var gotBody string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		gotBody = string(body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Setenv("SHOWBOAT_REMOTE_URL", server.URL)
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	if err := Init(file, "Test", "dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	gotBody = ""
+	if _, _, err := Exec(file, "bash", "echo hello", ""); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(gotBody, "command=exec") {
+		t.Errorf("expected command=exec in remote POST body, got %q", gotBody)
+	}
+	if !strings.Contains(gotBody, "language=bash") {
+		t.Errorf("expected language=bash in remote POST body, got %q", gotBody)
+	}
+}
+
+func TestImageCallsRemotePost(t *testing.T) {
+	var gotContentType string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotContentType = r.Header.Get("Content-Type")
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	t.Setenv("SHOWBOAT_REMOTE_URL", server.URL)
+
+	dir := t.TempDir()
+	file := filepath.Join(dir, "demo.md")
+
+	if err := Init(file, "Test", "dev"); err != nil {
+		t.Fatal(err)
+	}
+
+	pngPath := filepath.Join(dir, "test.png")
+	if err := os.WriteFile(pngPath, minimalPNG, 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	gotContentType = ""
+	if err := Image(file, pngPath, ""); err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(gotContentType, "multipart/form-data") {
+		t.Errorf("expected multipart/form-data content type for image POST, got %q", gotContentType)
 	}
 }
 

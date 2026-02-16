@@ -128,6 +128,36 @@ func TestWriteOutputNoBackticks(t *testing.T) {
 	}
 }
 
+func TestWriteTitleWithDocumentID(t *testing.T) {
+	var buf strings.Builder
+	blocks := []Block{
+		TitleBlock{Title: "My Demo", Timestamp: "2026-02-06T15:30:00Z", Version: "v0.3.0", DocumentID: "abc-123"},
+	}
+	err := Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "# My Demo\n\n*2026-02-06T15:30:00Z by Showboat v0.3.0*\n<!-- showboat-id: abc-123 -->\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%q\ngot:\n%q", expected, buf.String())
+	}
+}
+
+func TestWriteTitleWithDocumentIDNoVersion(t *testing.T) {
+	var buf strings.Builder
+	blocks := []Block{
+		TitleBlock{Title: "My Demo", Timestamp: "2026-02-06T15:30:00Z", DocumentID: "abc-123"},
+	}
+	err := Write(&buf, blocks)
+	if err != nil {
+		t.Fatal(err)
+	}
+	expected := "# My Demo\n\n*2026-02-06T15:30:00Z*\n<!-- showboat-id: abc-123 -->\n"
+	if buf.String() != expected {
+		t.Errorf("expected:\n%q\ngot:\n%q", expected, buf.String())
+	}
+}
+
 func TestWriteFullDocument(t *testing.T) {
 	var buf strings.Builder
 	blocks := []Block{
