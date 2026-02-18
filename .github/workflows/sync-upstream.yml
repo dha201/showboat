@@ -1,0 +1,62 @@
+name: Sync upstream
+
+on:
+  schedule:
+    - cron: '0 6 * * *'  # Daily at 06:00 UTC
+  workflow_dispatch:      # Allow manual trigger
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        run: git remote add upstream https://github.com/simonw/showboat.git || true
+
+      - name: Fetch upstream
+        run: git fetch upstream
+
+      - name: Check for new commits
+        id: check
+        run: |
+          BEHIND=$(git rev-list HEAD..upstream/main --count)
+          echo "behind=$BEHIND" >> "$GITHUB_OUTPUT"
+
+      - name: Merge upstream (clean)
+        if: steps.check.outputs.behind != '0'
+        id: merge
+        run: |
+          git merge upstream/main --no-edit && echo "clean=true" >> "$GITHUB_OUTPUT" || echo "clean=false" >> "$GITHUB_OUTPUT"
+
+      - name: Push merged changes
+        if: steps.merge.outputs.clean == 'true'
+        run: git push origin main
+
+      - name: Open PR on conflict
+        if: steps.merge.outputs.clean == 'false'
+        run: |
+          git merge --abort || true
+          BRANCH="sync/upstream-$(date +%Y%m%d)"
+          git checkout -b "$BRANCH"
+          git merge upstream/main --no-edit -X theirs || true
+          git push origin "$BRANCH"
+          gh pr create \
+            --title "chore: sync upstream showboat $(date +%Y-%m-%d)" \
+            --body "Automated upstream sync from [simonw/showboat](https://github.com/simonw/showboat). Merge conflicts were detected — please review before merging." \
+            --base main \
+            --head "$BRANCH"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
